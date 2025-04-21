@@ -1,7 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <Sphere.h>
+#include "../include/Sphere.h"
 
 using namespace std;
 
