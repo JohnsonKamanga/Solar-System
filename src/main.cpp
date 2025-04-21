@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include "../include/Sphere.h"
+#include "../include/Shader.h"
 
 using namespace std;
 
@@ -36,32 +37,34 @@ int main()
     glViewport(0, 0, 800, 800);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    Sphere sph;
+    Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
 
-    // unsigned int VAO, VBO, EBO;
+    Sphere sph(6.0f, 36, 18, true, 2);
 
-    // glGenVertexArrays(1, &VAO);
-    // glBindVertexArray(VAO);
+    unsigned int VAO, VBO, EBO;
 
-    // glGenBuffers(1, &VBO);
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBufferData(GL_ARRAY_BUFFER, sph.getInterleavedVertexSize(), sph.getInterleavedVertices(), GL_STATIC_DRAW);
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
 
-    // glGenBuffers(1, &EBO);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sph.getIndexSize(), sph.getIndices(), GL_STATIC_DRAW);
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sph.getInterleavedVertexSize(), sph.getInterleavedVertices(), GL_STATIC_DRAW);
 
-    // glEnableVertexAttribArray(0);
-    // glEnableVertexAttribArray(1);
-    // glEnableVertexAttribArray(2);
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sph.getIndexSize(), sph.getIndices(), GL_STATIC_DRAW);
 
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)0);
-    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)(sizeof(float) * 3));
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)(sizeof(float) * 6));
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 
-    // glBindVertexArray(0);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)(sizeof(float) * 3));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)(sizeof(float) * 6));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -69,9 +72,11 @@ int main()
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        
+        shader.use();
 
-        //glBindVertexArray(VAO);
-        //glDrawElements(GL_TRIANGLES, sph.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, sph.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
