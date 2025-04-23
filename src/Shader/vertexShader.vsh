@@ -5,7 +5,9 @@ layout (location = 2) in vec2 aTextCoord;
 
 out vec2 TextCoord;
 
+uniform mat4 TransformationMatrix;
+
 void main(){
-    gl_Position = vec4(aPos, 1.0);
+    gl_Position = TransformationMatrix * vec4(aPos, 1.0);
     TextCoord = aTextCoord;
 }

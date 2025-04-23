@@ -1,10 +1,15 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <math.h>
 #include "../include/Sphere.h"
 #include "../include/Shader.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
+using namespace glm;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -39,7 +44,9 @@ int main()
 
     Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
 
-    Sphere sph(6.0f, 36, 18, true, 2);
+    Sphere sph(0.5f, 36, 18, true, 2);
+
+    sph.printSelf();
 
     unsigned int VAO, VBO, EBO;
 
@@ -58,9 +65,10 @@ int main()
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)(sizeof(float) * 3));
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void *)(sizeof(float) * 6));
+    unsigned int stride = sph.getInterleavedStride(); 
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *)(sizeof(float) * 3));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void *)(sizeof(float) * 6));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -72,8 +80,20 @@ int main()
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        
+
         shader.use();
+
+        float color = sin(glfwGetTime()) / 2.0f + 0.5f;
+        unsigned int ColorLocation = glGetUniformLocation(shader.ID, "SphereColor");
+        glUniform4f(ColorLocation, 0.5, color, 0.2, 1.0);
+        
+
+        unsigned int transformationMatrixLocation = glGetUniformLocation(shader.ID, "TransformationMatrix");
+        
+        mat4 trans = mat4(1.0f);
+        trans = scale(trans, vec3(0.5, 0.5, 0.5));
+
+       glUniformMatrix4fv(transformationMatrixLocation, 1, GL_FALSE, value_ptr(trans));
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, sph.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
