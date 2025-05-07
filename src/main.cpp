@@ -4,12 +4,17 @@
 #include <math.h>
 #include "../include/Sphere.h"
 #include "../include/Shader.h"
+#include "../include/Planet.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
 using namespace glm;
+
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -43,36 +48,97 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
+    
+    Planet planets []=  {
+        Planet("sun", 3.0f, "./PlanetTextureMaps/sunmap.jpg"),
+        Planet("mercury", 0.3f, "./PlanetTextureMaps/mercurymap.jpg"),
+        Planet("venus", 0.4f, "./PlanetTextureMaps/venusmap.jpg"),
+        Planet("earth", 0.5f, "./PlanetTextureMaps/earthmap1k.jpg"),
+        Planet("moon", 0.15f, "./PlanetTextureMaps/moonmap1k.jpg"),
+        Planet("mars", 0.6f, "./PlanetTextureMaps/marsmap1k.jpg"),
+    };
 
-    Sphere sph(0.5f, 36, 18, true, 2);
+    vec3 planetPositons[] = {
+        vec3(0.0f, 0.0f, 0.0f),//sun position
+        vec3(0.0f, 0.0f, 2.0f),//mercury position
+        vec3(0.0f, 0.0f, 6.0f),//venus position
+        vec3(0.0f, 0.0f, 10.0f),//earth position
+        vec3(0.0f, 0.0f, 11.8f),//moon position
+        vec3(0.0f, 0.0f, 14.0f)//mars position
+    };
 
-    sph.printSelf();
+    while (!glfwWindowShouldClose(window))
+    {
+        processInput(window);
 
-    unsigned int VAO, VBO, EBO;
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+        shader.use();
 
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sph.getInterleavedVertexSize(), sph.getInterleavedVertices(), GL_STATIC_DRAW);
+        mat4 view = lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sph.getIndexSize(), sph.getIndices(), GL_STATIC_DRAW);
+        mat4 projection = perspective(radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
+        unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
 
-    unsigned int stride = sph.getInterleavedStride(); 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void *)(sizeof(float) * 3));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void *)(sizeof(float) * 6));
+        unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
 
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        for (unsigned int i = 0; i < size(planets); i++)
+        {
+            glBindTexture(GL_TEXTURE_2D, planets[i].getTexture());
+            glBindVertexArray(planets[i].getVAO());
+            const float radius = 10.0f;
+            float camX = sin(glfwGetTime()) * radius;
+        float camZ = cos(glfwGetTime()) * radius;
+            
+            mat4 model = mat4(1.0f);
+            model = planets[i].getName() == "sun" ? translate(model, planetPositons[i]) : translate(model, planetPositons[i] + vec3(camX, 0.0, camZ) );
+            // float angle = 20.0f * i;
+            model = rotate(model, (float)glfwGetTime() * radians(20.0f), vec3(1.0f, 1.0f, 0.5f));
+
+            unsigned int modelLoc = glGetUniformLocation(shader.ID, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, value_ptr(model));
+            glDrawElements(GL_TRIANGLES, planets[i].getIndexCount(), GL_UNSIGNED_INT, (void*)0);
+        }
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+    return 0;
+}
+
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        glfwSetWindowShouldClose(window, true);
+    }
+    const float cameraSpeed = 0.05f; // adjust accordingly
+if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+cameraPos += cameraSpeed * cameraFront;
+if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+cameraPos -= cameraSpeed * cameraFront;
+if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) *
+cameraSpeed;
+if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) *
+cameraSpeed;
+}
+
+/*
+unsigned int VAO;
+    Planet sun("sun", 0.5f, &VAO);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -96,24 +162,9 @@ int main()
        glUniformMatrix4fv(transformationMatrixLocation, 1, GL_FALSE, value_ptr(trans));
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, sph.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
+        glDrawElements(GL_TRIANGLES, sun.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    glfwTerminate();
-    return 0;
-}
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-}
+*/
