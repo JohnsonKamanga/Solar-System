@@ -11,18 +11,22 @@
 
 using namespace std;
 
-class Shader{
-    public:
+class Shader
+{
+public:
     unsigned int ID;
+    inline Shader()
+    {
+        cout << "defualt shader constructor" << endl;
+    };
 
-    Shader(const char* vertexPath, const char* fragmentPath);
+    Shader(const char *vertexPath, const char *fragmentPath);
 
     void use();
 
     void setBool(const string &name, bool value) const;
     void setInt(const string &name, int value) const;
     void setFloat(const string &name, float value) const;
-
 };
 
 #endif
