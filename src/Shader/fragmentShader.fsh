@@ -1,4 +1,6 @@
 #version 330 core
+
+in vec3 Normals;
 in vec2 TextCoord;
 
 out vec4 FragColor;
