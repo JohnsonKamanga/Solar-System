@@ -14,16 +14,16 @@ public:
         cout << "Default planet constructor" << endl;
     };
 
-    Planet(char const *name, float radius, const char* texturePath);
+    Planet(char const *name, float radius, float orbitRadius, string texturePath);
     
     inline char const *getName() const
     {
         return this->name;
     };
 
-    inline unsigned int getTexture() const
+    inline string getTexturePath() const
     {
-        return this->texture;
+        return this->texturePath;
     };
 
     inline unsigned int getVAO() const
@@ -41,7 +41,14 @@ public:
         return this->VBO;
     };
 
+    inline float getOrbitRadius() const
+    {
+        return this->orbitRadius;
+    };
+
 private:
     char const *name;
-    unsigned int VAO, VBO, EBO, texture;
+    unsigned int VAO, VBO, EBO;
+    string texturePath;
+    float orbitRadius;
 };
