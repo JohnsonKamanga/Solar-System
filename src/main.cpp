@@ -104,8 +104,21 @@ int main()
 
         if (data)
         {
+            GLenum channelColors;
+            if(nrChannels == 4){
+                channelColors = GL_RGBA;
+            }
+            else if(nrChannels == 3){
+                channelColors = GL_RGB;
+            }
+            else if(nrChannels == 2){
+                channelColors = GL_RG;
+            }
+            else if(nrChannels == 1){
+                channelColors = GL_RED;
+            }
             // generate texture using loaded image
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_2D, 0, channelColors, width, height, 0, channelColors, GL_UNSIGNED_BYTE, data);
             // generate mipmap
             glGenerateMipmap(GL_TEXTURE_2D);
         }
