@@ -5,6 +5,8 @@
 #include "../include/Sphere.h"
 #include "../include/Shader.h"
 #include "../include/Planet.h"
+#include "../include/PlanetarySatellite.h"
+#include "../include/Camera.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -14,20 +16,28 @@
 using namespace std;
 using namespace glm;
 
-float Yaw = -90.0f;
-float Pitch = 0.0f;
+
+//global variables
+
 bool firstMouse = true;
 
+float sunRotationSpeed = 1.0f;
+float moonOrbitSpeed = 1.0f;
+
+float Zoom;
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 float lastX = 400, lastY = 300;
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+Camera camera(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+
+//function declarations
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void handleTimeChange();
 
 int main()
 {
@@ -37,7 +47,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow *window = glfwCreateWindow(800, 600, "Learn OpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(800, 600, "Johnson's Solar System", NULL, NULL);
 
     if (window == NULL)
     {
@@ -59,26 +69,27 @@ int main()
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
 
-    Planet planets[] = {
-        Planet("sun", 3.5f, 0.0f, "./PlanetTextureMaps/sunmap.jpg"),
-        Planet("mercury", 1.5f, 15.0f, "./PlanetTextureMaps/mercurymap.jpg"),
-        Planet("venus", 1.5f, 10.0f, "./PlanetTextureMaps/venusmap.jpg"),
-        Planet("earth", 1.8f, 30.0f, "./PlanetTextureMaps/earthmap1k.jpg"),
-        Planet("moon", 0.8f, 33.8f, "./PlanetTextureMaps/moonmap1k.jpg"),
-        Planet("mars", 1.6f, 40.0f, "./PlanetTextureMaps/marsmap1k.jpg"),
+    Planet *planets[] = {
+        new Planet("sun", 3.5f, 0.0f, 1.0f, 1.0f, "./PlanetTextureMaps/sunmap.jpg", vec3(0.0f)),
+        new Planet("mercury", 1.5f, 15.0f, 1.1f, 2.5f, "./PlanetTextureMaps/mercurymap.jpg", vec3(15.0f, 0.0f, 15.0f)),
+        new Planet("venus", 1.5f, 10.0f, 1.2f, 3.5f, "./PlanetTextureMaps/venusmap.jpg", vec3(10.0f, 0.0f, 10.0f)),
+        new Planet("earth", 1.8f, 30.0f, 1.3f, 4.5f, "./PlanetTextureMaps/earthmap1k.jpg", vec3(30.0f, 0.0f, 30.0f)),
+        new PlanetarySatellite("moon", 0.8f, 33.8f, 1.3f, 4.5f, 3.8f, "./PlanetTextureMaps/moonmap1k.jpg", vec3(33.8f, 0.0f, 33.8f)),
+        new Planet("mars", 1.6f, 40.0f, 1.5f, 5.5f, "./PlanetTextureMaps/marsmap1k.jpg", vec3(40.0f, 0.0f, 40.0f)),
     };
 
-    vec3 planetPositions[] = {
-        vec3(0.0f, 0.0f, 0.0f),  // sun position
-        vec3(2.0f, 0.0f, 2.0f),  // mercury position
-        vec3(6.0f, 0.0f, 6.0f),  // venus position
-        vec3(10.0f, 0.0f, 10.0f), // earth position
-        vec3(11.8f, 0.0f, 11.8f), // moon position
-        vec3(14.0f, 0.0f, 14.0f)  // mars position
-    };
+    // vec3 planetPositions[] = {
+    //     vec3(0.0f, 0.0f, 0.0f),   // sun position
+    //     vec3(2.0f, 0.0f, 2.0f),   // mercury position
+    //     vec3(6.0f, 0.0f, 6.0f),   // venus position
+    //     vec3(10.0f, 0.0f, 10.0f), // earth position
+    //     vec3(11.8f, 0.0f, 11.8f), // moon position
+    //     vec3(14.0f, 0.0f, 14.0f)  // mars position
+    // };
 
     unsigned int textures[6];
 
@@ -98,9 +109,9 @@ int main()
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
         int width, height, nrChannels;
 
-        stbi_set_flip_vertically_on_load(true);
+        //stbi_set_flip_vertically_on_load(true);
 
-        unsigned char *data = stbi_load(planets[i].getTexturePath().c_str(), &width, &height, &nrChannels, 0);
+        unsigned char *data = stbi_load((*planets[i]).getTexturePath().c_str(), &width, &height, &nrChannels, 0);
 
         if (data)
         {
@@ -124,11 +135,10 @@ int main()
         }
         else
         {
-            cout << "Failed to load texture from " << planets[i].getTexturePath() << endl;
+            cout << "Failed to load texture from " << (*planets[i]).getTexturePath() << endl;
         }
 
         stbi_image_free(data);
-
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -143,9 +153,9 @@ int main()
 
         shader.use();
 
-        mat4 view = lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        mat4 view = camera.GetViewMatrix();
 
-        mat4 projection = perspective(radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        mat4 projection = perspective(radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
 
         unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
@@ -153,27 +163,21 @@ int main()
         unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
 
-        float time = glfwGetTime();
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
         for (unsigned int i = 0; i < size(planets); i++)
         {
-            glBindTexture(GL_TEXTURE_2D, textures[i]);
-            glBindVertexArray(planets[i].getVAO());
+            if((*planets[i]).getName() == "sun"){
+                (*planets[i]).setRotationSpeed(sunRotationSpeed);
+            }
 
-            float posX = sin(time) * planets[i].getOrbitRadius();
-            float posZ = cos(time) * planets[i].getOrbitRadius();
-            // cout << "Planet: " << planets[i].getName() << endl;
-            // cout << "x: " << posX << ", z: " << posZ << endl;
-            mat4 model = mat4(1.0f);
-            model = translate(model, vec3(posX, 0.0f, posZ)  );
-            // float angle = 20.0f * i;
-            // model = rotate(model, radians(20.0f), vec3(1.0f, 1.0f, 0.5f));
+            if((*planets[i]).getName() == "moon"){
+                (*planets[i]).setOrbitSpeed(moonOrbitSpeed);
+            }
 
-            unsigned int modelLoc = glGetUniformLocation(shader.ID, "model");
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, value_ptr(model));
-            glDrawElements(GL_TRIANGLES, planets[i].getIndexCount(), GL_UNSIGNED_INT, (void *)0);
+            (*planets[i]).draw(shader.ID, textures[i]);
         }
 
         glfwSwapBuffers(window);
@@ -198,15 +202,31 @@ void processInput(GLFWwindow *window)
     }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
+        camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) *
-                     cameraSpeed;
+        camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) *
-                     cameraSpeed;
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+        sunRotationSpeed+= 0.02f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
+        sunRotationSpeed-= 0.02f;
+    }
+
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
+        moonOrbitSpeed+= 0.02f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
+        moonOrbitSpeed-= 0.02f;
+    }
+    
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
@@ -221,53 +241,16 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     float yoffset = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-    Yaw += xoffset;
-    Pitch += yoffset;
-    if (Pitch > 89.0f)
-        Pitch = 89.0f;
-    if (Pitch < -89.0f)
-        Pitch = -89.0f;
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    direction.y = sin(glm::radians(Pitch));
-    direction.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    cameraFront = glm::normalize(direction);
+    
+    camera.ProcessMouseMovement(xoffset, yoffset, false);
 }
-/*
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+    camera.ProcessMouseScroll(yoffset);
+}
 
 
+//to be implemented. The goal is to calculate dt(aka delat time)
+void handleTimeChange(){
 
-unsigned int VAO;
-    Planet sun("sun", 0.5f, &VAO);
-
-    while (!glfwWindowShouldClose(window))
-    {
-        processInput(window);
-
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        shader.use();
-
-        float color = sin(glfwGetTime()) / 2.0f + 0.5f;
-        unsigned int ColorLocation = glGetUniformLocation(shader.ID, "SphereColor");
-        glUniform4f(ColorLocation, 0.5, color, 0.2, 1.0);
-
-
-        unsigned int transformationMatrixLocation = glGetUniformLocation(shader.ID, "TransformationMatrix");
-
-        mat4 trans = mat4(1.0f);
-        trans = scale(trans, vec3(0.5, 0.5, 0.5));
-
-       glUniformMatrix4fv(transformationMatrixLocation, 1, GL_FALSE, value_ptr(trans));
-
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, sun.getIndexCount(), GL_UNSIGNED_INT, (void*)0);
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-*/
+}
