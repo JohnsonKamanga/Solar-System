@@ -24,13 +24,13 @@ void Planet::draw(unsigned int shaderId){
             glBindTexture(GL_TEXTURE_2D, this->getTextureId());
             
             float time = glfwGetTime();
-            float posX = sin(time * orbitSpeed) * this->getModelMatrix().x;
-            float posZ = cos(time * orbitSpeed) * this->getModelMatrix().z;
+            float posX = sin(time * this->getOrbitSpeed()) * this->getModelMatrix().x;
+            float posZ = cos(time * this->getOrbitSpeed()) * this->getModelMatrix().z;
             vec3 pos(posX, 0.0f, posZ);
             mat4 model = mat4(1.0f);
             model = translate(model, pos);
             
-            model = rotate(model, (time)*rotationSpeed, vec3(0.0f, 1.0f, 0.0f));
+            model = rotate(model, (time)*this->getRotationSpeed(), vec3(0.0f, 1.0f, 0.0f));
             mat3 normalMatrix(transpose(inverse(model)));
 
             unsigned int modelLoc = glGetUniformLocation(shaderId, "model");
@@ -40,6 +40,8 @@ void Planet::draw(unsigned int shaderId){
             glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, value_ptr(normalMatrix));
 
             glDrawElements(GL_TRIANGLES, this->getIndexCount(), GL_UNSIGNED_INT, (void *)0);
+
+            glBindVertexArray(0);
 
             if(moon != nullptr){
                 (*moon).draw(shaderId, pos);
