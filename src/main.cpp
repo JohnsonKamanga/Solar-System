@@ -268,6 +268,7 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
         sunRotationSpeed -= camera.MovementSpeed * deltaTime * 0.2f;
+        sunRotationSpeed = sunRotationSpeed < 0.0f ? 0.0f : sunRotationSpeed;
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
@@ -278,6 +279,7 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
         moonOrbitSpeed -= camera.MovementSpeed * deltaTime * 0.2f;
+        moonOrbitSpeed = moonOrbitSpeed < 0.0f ? 0.0f : moonOrbitSpeed;
     }
 }
 
