@@ -8,7 +8,6 @@
 #include "../include/PlanetarySatellite.h"
 #include "../include/CosmicObject.h"
 #include "../include/Camera.h"
-#include "../include/Timer.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -32,14 +31,12 @@ float lastX = 400, lastY = 300;
 
 vec3 sunPos(0.0f, 0.0f, 0.0f);
 Camera camera(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
-Timer timer;
 // ########function declarations#############
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
-void handleTimeChange();
 
 // ##########main function##############
 int main()
@@ -164,16 +161,10 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        if (first)
-        {
-            timer.start();
-            first = false;
-        }
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
-        timer.stop();
-
-        deltaTime = timer.getElapsedTime();
-        timer.start();
 
         shader.use();
 
