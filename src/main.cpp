@@ -6,7 +6,9 @@
 #include "../include/Shader.h"
 #include "../include/Planet.h"
 #include "../include/PlanetarySatellite.h"
+#include "../include/CosmicObject.h"
 #include "../include/Camera.h"
+#include "../include/Timer.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -16,8 +18,7 @@
 using namespace std;
 using namespace glm;
 
-
-//global variables
+// ########global variables#############
 
 bool firstMouse = true;
 
@@ -29,16 +30,18 @@ float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 float lastX = 400, lastY = 300;
 
+vec3 sunPos(0.0f, 0.0f, 0.0f);
 Camera camera(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
-
-//function declarations
+Timer timer;
+// ########function declarations#############
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void handleTimeChange();
 
+// ##########main function##############
 int main()
 {
     glfwInit();
@@ -71,16 +74,27 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
-    Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
+    Shader normalShader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
+    Shader sunShader("./Shader/sunVertexShader.vsh", "./Shader/sunFragmentShader.fsh");
+
+    PlanetarySatellite* moon = new PlanetarySatellite("moon", 0.8f, 3.8f, 1.0f, 4.5f, "./PlanetTextureMaps/moonmap1k.jpg", vec3(3.8f, 0.0f, 3.8f));
 
     Planet *planets[] = {
-        new Planet("sun", 3.5f, 0.0f, 1.0f, 1.0f, "./PlanetTextureMaps/sunmap.jpg", vec3(0.0f)),
-        new Planet("mercury", 1.5f, 15.0f, 1.1f, 2.5f, "./PlanetTextureMaps/mercurymap.jpg", vec3(15.0f, 0.0f, 15.0f)),
-        new Planet("venus", 1.5f, 10.0f, 1.2f, 3.5f, "./PlanetTextureMaps/venusmap.jpg", vec3(10.0f, 0.0f, 10.0f)),
-        new Planet("earth", 1.8f, 30.0f, 1.3f, 4.5f, "./PlanetTextureMaps/earthmap1k.jpg", vec3(30.0f, 0.0f, 30.0f)),
-        new PlanetarySatellite("moon", 0.8f, 33.8f, 1.3f, 4.5f, 3.8f, "./PlanetTextureMaps/moonmap1k.jpg", vec3(33.8f, 0.0f, 33.8f)),
-        new Planet("mars", 1.6f, 40.0f, 1.5f, 5.5f, "./PlanetTextureMaps/marsmap1k.jpg", vec3(40.0f, 0.0f, 40.0f)),
+         new Planet("sun", 3.5f, 0.0f, 1.0f, 1.0f, "./PlanetTextureMaps/sunmap.jpg", sunPos, nullptr),
+         new Planet("mercury", 1.5f, 8.0f, 1.1f, 2.5f, "./PlanetTextureMaps/mercurymap.jpg", vec3(15.0f, 0.0f, 15.0f),  nullptr),
+         new Planet("venus", 1.5f, 15.0f, 1.2f, 3.5f, "./PlanetTextureMaps/venusmap.jpg", vec3(10.0f, 0.0f, 10.0f), nullptr),
+         new Planet("earth", 1.8f, 20.0f, 1.3f, 4.5f, "./PlanetTextureMaps/earthmap1k.jpg", vec3(30.0f, 0.0f, 30.0f), moon),
+         new Planet("mars", 1.6f, 30.0f, 1.5f, 5.5f, "./PlanetTextureMaps/marsmap1k.jpg", vec3(40.0f, 0.0f, 40.0f), nullptr)
     };
+
+    CosmicObject* bodies[] ={
+        planets[0],//sun
+        planets[1],//mercury
+        planets[2],//venus
+        planets[3],//earth
+        moon,
+        planets[4]
+    } ;
 
     // vec3 planetPositions[] = {
     //     vec3(0.0f, 0.0f, 0.0f),   // sun position
@@ -101,6 +115,8 @@ int main()
         // bind buffer to texture buffer
         glBindTexture(GL_TEXTURE_2D, textures[i]);
 
+        (*bodies[i]).setTextureId(textures[i]);
+
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -109,23 +125,27 @@ int main()
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);
         int width, height, nrChannels;
 
-        //stbi_set_flip_vertically_on_load(true);
+        // stbi_set_flip_vertically_on_load(true);
 
-        unsigned char *data = stbi_load((*planets[i]).getTexturePath().c_str(), &width, &height, &nrChannels, 0);
+        unsigned char *data = stbi_load((*bodies[i]).getTexturePath().c_str(), &width, &height, &nrChannels, 0);
 
         if (data)
         {
             GLenum channelColors;
-            if(nrChannels == 4){
+            if (nrChannels == 4)
+            {
                 channelColors = GL_RGBA;
             }
-            else if(nrChannels == 3){
+            else if (nrChannels == 3)
+            {
                 channelColors = GL_RGB;
             }
-            else if(nrChannels == 2){
+            else if (nrChannels == 2)
+            {
                 channelColors = GL_RG;
             }
-            else if(nrChannels == 1){
+            else if (nrChannels == 1)
+            {
                 channelColors = GL_RED;
             }
             // generate texture using loaded image
@@ -135,13 +155,15 @@ int main()
         }
         else
         {
-            cout << "Failed to load texture from " << (*planets[i]).getTexturePath() << endl;
+            cout << "Failed to load texture from " << (*bodies[i]).getTexturePath() << endl;
         }
 
         stbi_image_free(data);
     }
 
     glEnable(GL_DEPTH_TEST);
+
+    bool first = true;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -151,54 +173,68 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        shader.use();
+        if (first)
+        {
+            timer.start();
+            first = false;
+        }
 
-        mat4 view = camera.GetViewMatrix();
+        timer.stop();
 
-        mat4 projection = perspective(radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
-
-        unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
-
-        unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
-
-
-        //point light
-        unsigned int pointLightColorLoc = glGetUniformLocation(shader.ID, "pointLightColor");
-        glUniform3f(pointLightColorLoc, 0.0f, 0.0f, 1.0f);
-
-        unsigned int pointLightPositionLoc = glGetUniformLocation(shader.ID, "pointLightPosition");
-        glUniform3f(pointLightPositionLoc, 0.0f, -1.0f, 0.0f);
-
-        unsigned int pointLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "pointLightAmbientStrength");
-        glUniform1f(pointLightAmbientStrengthLoc, 0.15f);
-
-        //directional light
-        unsigned int directionalLightColorLoc = glGetUniformLocation(shader.ID, "directionalLightColor");
-        glUniform3f(directionalLightColorLoc, 1.0f, 1.0f, 0.0f);
-
-        unsigned int directionalLightPositionLoc = glGetUniformLocation(shader.ID, "directionalLightPosition");
-        glUniform3f(directionalLightPositionLoc, 0.0f, 0.0f, 1.0f);
-
-        unsigned int directionalLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "pointLightAmbientStrength");
-        glUniform1f(directionalLightAmbientStrengthLoc, 0.15f);
-
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        deltaTime = timer.getElapsedTime();
+        timer.start();
 
         for (unsigned int i = 0; i < size(planets); i++)
         {
-            if((*planets[i]).getName() == "sun"){
+            //Shader *shader = (*planets[i]).getName() == "sun" ? &sunShader : &normalShader;
+            Shader *shader =  &normalShader;
+            (*shader).use();
+
+            mat4 view = camera.GetViewMatrix();
+
+            mat4 projection = perspective(radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+
+            unsigned int viewLoc = glGetUniformLocation((*shader).ID, "view");
+            glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
+
+            unsigned int projectionLoc = glGetUniformLocation((*shader).ID, "projection");
+            glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
+
+            //point light
+            unsigned int pointLightPosLoc = glGetUniformLocation((*shader).ID, "pointLightPosition");
+            glUniform3f(pointLightPosLoc, sunPos.x, sunPos.y + 1.0f, sunPos.z);
+
+            unsigned int pointLightColorLoc = glGetUniformLocation((*shader).ID, "pointLightColor");
+            glUniform3f(pointLightColorLoc, 0.0f, 0.0f, 1.0f);
+
+            unsigned int pointLightAmbientStrengthLoc = glGetUniformLocation((*shader).ID, "pointLightAmbientStrength");
+            glUniform1f(pointLightAmbientStrengthLoc, 0.15f);
+
+            //directional light
+            unsigned int directionalLightPosLoc = glGetUniformLocation((*shader).ID, "directionalLightPosition");
+            glUniform3f(directionalLightPosLoc, 0.0f, 0.0f , 1.0f);
+
+            unsigned int directionalLightColorLoc = glGetUniformLocation((*shader).ID, "directionalLightColor");
+            glUniform3f(directionalLightColorLoc, 1.0f, 1.0f, 1.0f);
+
+            unsigned int directionalLightAmbientStrengthLoc = glGetUniformLocation((*shader).ID, "directionalLightAmbientStrength");
+            glUniform1f(directionalLightAmbientStrengthLoc, 0.15f);
+
+            unsigned int viewPosLoc = glGetUniformLocation((*shader).ID, "viewPos");
+            glUniform3f(viewPosLoc, camera.Position.x, camera.Position.y, camera.Position.z);
+
+            if ((*planets[i]).getName() == "sun")
+            {
                 (*planets[i]).setRotationSpeed(sunRotationSpeed);
             }
 
-            if((*planets[i]).getName() == "moon"){
-                (*planets[i]).setOrbitSpeed(moonOrbitSpeed);
-            }
-
-            (*planets[i]).draw(shader.ID, textures[i]);
+                if ((*planets[i]).getName() == "earth")
+                {
+                    //get first and only moon
+                    (*planets[i]).getMoon()->setOrbitSpeed(moonOrbitSpeed);
+                }
+        
+            (*planets[i]).draw((*shader).ID);
         }
 
         glfwSwapBuffers(window);
@@ -208,6 +244,8 @@ int main()
     glfwTerminate();
     return 0;
 }
+
+// #######function implementations###########
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
@@ -231,23 +269,25 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
 
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
-        sunRotationSpeed+= 0.02f;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        sunRotationSpeed += camera.MovementSpeed * deltaTime * 0.2f;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
-        sunRotationSpeed-= 0.02f;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        sunRotationSpeed -= camera.MovementSpeed * deltaTime * 0.2f;
     }
 
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
-        moonOrbitSpeed+= 0.02f;
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        moonOrbitSpeed += camera.MovementSpeed * deltaTime * 0.2f;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
-        moonOrbitSpeed-= 0.02f;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        moonOrbitSpeed -= camera.MovementSpeed * deltaTime * 0.2f;
     }
-    
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
@@ -262,16 +302,16 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     float yoffset = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
-    
+
     camera.ProcessMouseMovement(xoffset, yoffset, false);
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
     camera.ProcessMouseScroll(yoffset);
 }
 
-
-//to be implemented. The goal is to calculate dt(aka delat time)
-void handleTimeChange(){
-
+// to be implemented. The goal is to calculate dt(aka delat time)
+void handleTimeChange()
+{
 }
