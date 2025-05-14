@@ -74,36 +74,27 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
-    Shader normalShader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
-    Shader sunShader("./Shader/sunVertexShader.vsh", "./Shader/sunFragmentShader.fsh");
+    Shader shader("./Shader/vertexShader.vsh", "./Shader/fragmentShader.fsh");
 
-    PlanetarySatellite* moon = new PlanetarySatellite("moon", 0.8f, 3.8f, 1.0f, 4.5f, "./PlanetTextureMaps/moonmap1k.jpg", vec3(3.8f, 0.0f, 3.8f));
+    PlanetarySatellite* moon = new PlanetarySatellite("moon", 0.6f, 3.8f, 1.0f, 4.5f, "./PlanetTextureMaps/moonmap1k.jpg", vec3(3.8f, 0.0f, 3.8f));
 
     Planet *planets[] = {
          new Planet("sun", 3.5f, 0.0f, 1.0f, 1.0f, "./PlanetTextureMaps/sunmap.jpg", sunPos, nullptr),
-         new Planet("mercury", 1.5f, 8.0f, 1.1f, 2.5f, "./PlanetTextureMaps/mercurymap.jpg", vec3(15.0f, 0.0f, 15.0f),  nullptr),
-         new Planet("venus", 1.5f, 15.0f, 1.2f, 3.5f, "./PlanetTextureMaps/venusmap.jpg", vec3(10.0f, 0.0f, 10.0f), nullptr),
-         new Planet("earth", 1.8f, 20.0f, 1.3f, 4.5f, "./PlanetTextureMaps/earthmap1k.jpg", vec3(30.0f, 0.0f, 30.0f), moon),
-         new Planet("mars", 1.6f, 30.0f, 1.5f, 5.5f, "./PlanetTextureMaps/marsmap1k.jpg", vec3(40.0f, 0.0f, 40.0f), nullptr)
+         new Planet("mercury", 1.2f, 10.0f, 1.1f, 2.5f, "./PlanetTextureMaps/mercurymap.jpg", vec3(15.0f, 0.0f, 15.0f),  nullptr),
+         new Planet("venus", 1.5f, 25.0f, 1.2f, 3.5f, "./PlanetTextureMaps/venusmap.jpg", vec3(10.0f, 0.0f, 10.0f), nullptr),
+         new Planet("earth", 1.8f, 40.0f, 1.3f, 4.5f, "./PlanetTextureMaps/earthmap1k.jpg", vec3(30.0f, 0.0f, 30.0f), moon),
+         new Planet("mars", 1.6f, 50.0f, 1.5f, 5.5f, "./PlanetTextureMaps/marsmap1k.jpg", vec3(40.0f, 0.0f, 40.0f), nullptr)
     };
 
+    //used to initialize textures
     CosmicObject* bodies[] ={
         planets[0],//sun
         planets[1],//mercury
         planets[2],//venus
         planets[3],//earth
-        moon,
-        planets[4]
+        moon,//moon
+        planets[4]//mars
     } ;
-
-    // vec3 planetPositions[] = {
-    //     vec3(0.0f, 0.0f, 0.0f),   // sun position
-    //     vec3(2.0f, 0.0f, 2.0f),   // mercury position
-    //     vec3(6.0f, 0.0f, 6.0f),   // venus position
-    //     vec3(10.0f, 0.0f, 10.0f), // earth position
-    //     vec3(11.8f, 0.0f, 11.8f), // moon position
-    //     vec3(14.0f, 0.0f, 14.0f)  // mars position
-    // };
 
     unsigned int textures[6];
 
@@ -184,43 +175,43 @@ int main()
         deltaTime = timer.getElapsedTime();
         timer.start();
 
+        shader.use();
+
+        mat4 view = camera.GetViewMatrix();
+
+        mat4 projection = perspective(radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+
+        unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
+
+        unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
+
+        //point light
+        unsigned int pointLightPosLoc = glGetUniformLocation(shader.ID, "pointLightPosition");
+        glUniform3f(pointLightPosLoc, sunPos.x, sunPos.y + 1.0f, sunPos.z);
+
+        unsigned int pointLightColorLoc = glGetUniformLocation(shader.ID, "pointLightColor");
+        glUniform3f(pointLightColorLoc, 0.0f, 0.0f, 1.0f);
+
+        unsigned int pointLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "pointLightAmbientStrength");
+        glUniform1f(pointLightAmbientStrengthLoc, 0.15f);
+
+        //directional light
+        unsigned int directionalLightPosLoc = glGetUniformLocation(shader.ID, "directionalLightPosition");
+        glUniform3f(directionalLightPosLoc, 0.0f, 0.0f , 1.0f);
+
+        unsigned int directionalLightColorLoc = glGetUniformLocation(shader.ID, "directionalLightColor");
+        glUniform3f(directionalLightColorLoc, 1.0f, 1.0f, 1.0f);
+
+        unsigned int directionalLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "directionalLightAmbientStrength");
+        glUniform1f(directionalLightAmbientStrengthLoc, 0.15f);
+
+
         for (unsigned int i = 0; i < size(planets); i++)
         {
-            //Shader *shader = (*planets[i]).getName() == "sun" ? &sunShader : &normalShader;
-            Shader *shader =  &normalShader;
-            (*shader).use();
 
-            mat4 view = camera.GetViewMatrix();
-
-            mat4 projection = perspective(radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
-
-            unsigned int viewLoc = glGetUniformLocation((*shader).ID, "view");
-            glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
-
-            unsigned int projectionLoc = glGetUniformLocation((*shader).ID, "projection");
-            glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
-
-            //point light
-            unsigned int pointLightPosLoc = glGetUniformLocation((*shader).ID, "pointLightPosition");
-            glUniform3f(pointLightPosLoc, sunPos.x, sunPos.y + 1.0f, sunPos.z);
-
-            unsigned int pointLightColorLoc = glGetUniformLocation((*shader).ID, "pointLightColor");
-            glUniform3f(pointLightColorLoc, 0.0f, 0.0f, 1.0f);
-
-            unsigned int pointLightAmbientStrengthLoc = glGetUniformLocation((*shader).ID, "pointLightAmbientStrength");
-            glUniform1f(pointLightAmbientStrengthLoc, 0.15f);
-
-            //directional light
-            unsigned int directionalLightPosLoc = glGetUniformLocation((*shader).ID, "directionalLightPosition");
-            glUniform3f(directionalLightPosLoc, 0.0f, 0.0f , 1.0f);
-
-            unsigned int directionalLightColorLoc = glGetUniformLocation((*shader).ID, "directionalLightColor");
-            glUniform3f(directionalLightColorLoc, 1.0f, 1.0f, 1.0f);
-
-            unsigned int directionalLightAmbientStrengthLoc = glGetUniformLocation((*shader).ID, "directionalLightAmbientStrength");
-            glUniform1f(directionalLightAmbientStrengthLoc, 0.15f);
-
-            unsigned int viewPosLoc = glGetUniformLocation((*shader).ID, "viewPos");
+            unsigned int viewPosLoc = glGetUniformLocation(shader.ID, "viewPos");
             glUniform3f(viewPosLoc, camera.Position.x, camera.Position.y, camera.Position.z);
 
             if ((*planets[i]).getName() == "sun")
@@ -234,7 +225,7 @@ int main()
                     (*planets[i]).getMoon()->setOrbitSpeed(moonOrbitSpeed);
                 }
         
-            (*planets[i]).draw((*shader).ID);
+            (*planets[i]).draw(shader.ID);
         }
 
         glfwSwapBuffers(window);
@@ -309,9 +300,4 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(yoffset);
-}
-
-// to be implemented. The goal is to calculate dt(aka delat time)
-void handleTimeChange()
-{
 }
