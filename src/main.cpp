@@ -163,6 +163,27 @@ int main()
         unsigned int projectionLoc = glGetUniformLocation(shader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, value_ptr(projection));
 
+
+        //point light
+        unsigned int pointLightColorLoc = glGetUniformLocation(shader.ID, "pointLightColor");
+        glUniform3f(pointLightColorLoc, 0.0f, 0.0f, 1.0f);
+
+        unsigned int pointLightPositionLoc = glGetUniformLocation(shader.ID, "pointLightPosition");
+        glUniform3f(pointLightPositionLoc, 0.0f, -1.0f, 0.0f);
+
+        unsigned int pointLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "pointLightAmbientStrength");
+        glUniform1f(pointLightAmbientStrengthLoc, 0.15f);
+
+        //directional light
+        unsigned int directionalLightColorLoc = glGetUniformLocation(shader.ID, "directionalLightColor");
+        glUniform3f(directionalLightColorLoc, 1.0f, 1.0f, 0.0f);
+
+        unsigned int directionalLightPositionLoc = glGetUniformLocation(shader.ID, "directionalLightPosition");
+        glUniform3f(directionalLightPositionLoc, 0.0f, 0.0f, 1.0f);
+
+        unsigned int directionalLightAmbientStrengthLoc = glGetUniformLocation(shader.ID, "pointLightAmbientStrength");
+        glUniform1f(directionalLightAmbientStrengthLoc, 0.15f);
+
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
